@@ -1,0 +1,52 @@
+name: TruffleHog Secrets Analysis
+
+on:
+  workflow_call:
+    inputs:
+      default_branch_scan_base_commit:
+        required: true
+        type: string
+
+jobs:
+  trufflehog_v3_scan:
+    runs-on: ubuntu-latest
+    # Skip any PR created by dependabot to avoid permission issues
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: TruffleHog Default Branch Scan
+        # Run on push trigger
+        if: github.event_name == 'push'
+        id: trufflehogDefaultScan
+        uses: trufflesecurity/trufflehog@v3.4.1
+        with:
+          path: ./
+          base: ${{ inputs.default_branch_scan_base_commit }}
+          head: ${{ github.event.repository.default_branch }}
+      - name: Set up base commit ENV variable
+        run: echo "BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} origin/${{ github.head_ref }})" >> $GITHUB_ENV
+      - name: truffleHog PR Scan
+        # Run on pull_request trigger
+        if: github.event_name == 'pull_request'
+        id: trufflehogPRScan
+        uses: trufflesecurity/trufflehog@v3.4.1
+        with:
+          path: ./
+          base: ${{ env.BASE_COMMIT }}
+          head: ${{ github.head_ref }}
+      - name: Comment about findings in PR
+        # Run on pull_request trigger if trufflehogPRScan failed (found a secret)
+        if: github.event_name == 'pull_request' && failure() && steps.trufflehogPRScan.outcome == 'failure'
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "🤫 It looks like a sensitive secret has been hardcoded in a recent commit!\n\nSee this document to find out how to deal with secrets committed in code: [How to remove a committed secret](https://www.notion.so/janeapp/How-to-remove-a-committed-secret-114f281d3620433ab0d6117d81ac29f6)."
+            })

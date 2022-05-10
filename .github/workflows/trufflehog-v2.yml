@@ -1,0 +1,45 @@
+name: TruffleHog v2 Secrets Analysis
+
+on:
+  workflow_call:
+    inputs:
+      allowed_path:
+        required: true
+        type: string
+
+jobs:
+  trufflehog_v2_scan:
+    runs-on: ubuntu-latest
+    # Skip any PR created by dependabot to avoid permission issues
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: truffleHog Default Branch Scan
+        if: github.event_name == 'push' # Run on merges to the default branch - the push trigger
+        id: trufflehogDefaultScan
+        uses: janeapp/trufflehog-actions-scan@master
+        with:
+          branch: ${{ github.ref_name }}
+          allowed_path: ${{ inputs.allowed_path }}
+      - name: truffleHog PR Scan
+        if: github.event_name == 'pull_request' # Run on pull_request trigger
+        id: trufflehogPRScan
+        uses: janeapp/trufflehog-actions-scan@master
+        with:
+          branch: ${{ github.head_ref }}
+          allowed_path: ${{ inputs.allowed_path }}
+      - name: Comment about findings in PR
+        # Run on pull_request trigger if trufflehogPRScan failed (found a secret)
+        if: github.event_name == 'pull_request' && failure() && steps.trufflehogPRScan.outcome == 'failure'
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }} # implicitly uses secrets from calling workflow
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "🤫 It looks like a sensitive secret has been hardcoded in a recent commit!\n\nSee this document to find out how to deal with secrets committed in code: [How to remove a committed secret](https://www.notion.so/janeapp/How-to-remove-a-committed-secret-114f281d3620433ab0d6117d81ac29f6)."
+            })

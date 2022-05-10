@@ -1,0 +1,13 @@
+name: Weekly Semgrep Scan
+
+on:
+  workflow_call:
+
+jobs:
+  weekly_semgrep_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: returntocorp/semgrep-action@v1
+        with:
+          publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}

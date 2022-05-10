@@ -1,4 +1,4 @@
-name: TruffleHog Secrets Analysis
+name: TruffleHog v3 Secrets Analysis
 
 on:
   workflow_call:
@@ -18,8 +18,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: TruffleHog Default Branch Scan
-        # Run on push trigger
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' # Run on merges to the default branch - the push trigger
         id: trufflehogDefaultScan
         uses: trufflesecurity/trufflehog@v3.4.1
         with:
@@ -29,8 +28,7 @@ jobs:
       - name: Set up base commit ENV variable
         run: echo "BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} origin/${{ github.head_ref }})" >> $GITHUB_ENV
       - name: truffleHog PR Scan
-        # Run on pull_request trigger
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' # Run on pull_request trigger
         id: trufflehogPRScan
         uses: trufflesecurity/trufflehog@v3.4.1
         with:

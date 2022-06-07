@@ -38,7 +38,7 @@ jobs:
           head: ${{ github.head_ref }}
       - name: Comment about findings in PR
         # Run on pull_request trigger if trufflehogPRScan failed (found a secret)
-        if: github.event_name == 'pull_request' && failure() && steps.trufflehogPRScan.outcome == 'failure'
+        if: github.event_name == 'pull_request' && steps.trufflehogPRScan.outcome == 'failure'
         uses: actions/github-script@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

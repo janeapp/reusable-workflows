@@ -1,0 +1,32 @@
+name: Brakeman static analysis
+
+on:
+  workflow_call:
+
+jobs:
+  run_brakeman:
+    runs-on: ubuntu-latest
+    # Skip any PR created by dependabot to avoid permission issues
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Ruby 2.6
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: false # runs 'bundle install' and caches installed gems automatically
+      - name: Install gems
+        run: |
+          gem install brakeman -v 5.2.2
+      - name: Run Brakeman
+        run: |
+          brakeman -f json > brakeman.json || exit 0
+      - name: Brakeman static analysis
+        uses: devmasx/brakeman-linter-action@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          REPORT_PATH: brakeman.json
+      - name: Archive Brakeman report
+        uses: actions/upload-artifact@v2
+        with:
+          name: brakeman-json-report
+          path: brakeman.json

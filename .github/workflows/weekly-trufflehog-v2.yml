@@ -19,7 +19,7 @@ jobs:
         uses: janeapp/trufflehog-actions-scan@weekly-scan
         continue-on-error: true
         with:
-          branch: ${{ github.event.repository.default_branch }}
+          branch: ${{ github.ref }}
           allowed_path: ${{ inputs.allowed_path }}
       - name: Archive TruffleHog v2 report
         uses: actions/upload-artifact@v2

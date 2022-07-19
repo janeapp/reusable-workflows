@@ -2,6 +2,16 @@ name: Brakeman static analysis
 
 on:
   workflow_call:
+    inputs:
+      defectdojo_product_name:
+        required: true
+        type: string
+      defectdojo_engagement_name:
+        required: true
+        type: string
+      defectdojo_tags:
+        required: true
+        type: string
 
 jobs:
   run_brakeman:
@@ -30,3 +40,23 @@ jobs:
         with:
           name: brakeman-json-report
           path: brakeman.json
+      - name: POST Brakeman report to DefectDojo
+        if: github.event_name == 'pull_request' # Run on pull_request trigger
+        run: |
+          curl -X POST "http://99.79.10.30:8080/api/v2/reimport-scan/" \
+          -H "accept: application/json" \
+          -H "Content-Type: multipart/form-data" \
+          -H "Authorization: Token ${{ secrets.DEFECTDOJO_API }}" \
+          -F "scan_date=$(date +'%Y-%m-%d')" \
+          -F "minimum_severity=Info" \
+          -F "active=True" \
+          -F "verified=True" \
+          -F "scan_type=Brakeman Scan" \
+          -F "file=@brakeman.json;type=text/json" \
+          -F "product_name=${{ inputs.defectdojo_product_name }}" \
+          -F "engagement_name=${{ inputs.defectdojo_engagement_name }}" \
+          -F "auto_create_context=True" \
+          -F "test_title=Brakeman Scan on Pull Request #${{ github.event.number }}" \
+          -F "branch_tag=${{ github.head_ref }}" \
+          -F "commit_hash=${{ github.sha }}" \
+          -F "tags=${{ inputs.defectdojo_tags }}"
